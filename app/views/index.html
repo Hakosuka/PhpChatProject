@@ -10,13 +10,13 @@
     <!---->
 </div>
 <div id="message-entry">
-    <form action="ClientController.php" method="POST">
+    <form action="ClientController.php" method="POST" onsubmit="sendMsg(event)">
         <input type="text" name="yourName" placeholder="Enter your username"/>
         <input type="text" name="recipient"/>
         <textarea name="content" placeholder="Enter your message"></textarea>
         <button type="submit">Send</button>
     </form>
 </div>
-<script src="./script.js"></script>
+<script src="script.js"></script>
 </body>
 </html>

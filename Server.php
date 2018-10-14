@@ -11,57 +11,56 @@
  * TODO: User can read their messages
  * TODO: User can pick messages from particular users
  */
-$host = "DB_HOST";
-$username = "DB_USER";
-$password = "1TwoThree";
-$database = "DB_NAME";
+require(__DIR__ . 'app/controllers/BaseController.php');
+require(__DIR__ . 'app/controllers/ClientController.php');
+require(__DIR__ . 'app/controllers/MessageController.php');
 
-function __construct(){
-    $msgDB = new SQLite3('analtyics.sqlite', SQLITE3_OPEN_CREATE || SQLITE3_OPEN_READWRITE);
-    $msgDB->query('CREATE TABLE IF NOT EXISTS "messages" (
-        "msgID" INTEGER PRIMARY KEY NOT NULL,
-        "senderID"
-        "senderName" VARCHAR,
-        "inboxID" INTEGER,
-        "inboxName" VARCHAR,
-        "msgContent" VARCHAR,
-        "msgTime" DATETIME
-    )');
-    $usersDB = new SQLite3('analtyics.sqlite', SQLITE3_OPEN_CREATE || SQLITE3_OPEN_READWRITE);
-    $usersDB->query('CREATE TABLE IF NOT EXISTS "users" (
-        "userID" INTEGER PRIMARY KEY NOT NULL,
-        "username" VARCHAR
-    )');
-}
+/**
+ * @param $method - The user's request method
+ * @param $route
+ * @param $callback - The callback to be executed
+ * @throws Exception
+ */
+function respond($method, $route, $callback){
+    if(gettype($callback)!=="string" && !is_callable($callback)){
+        throw new Exception('$callback needs to be a parameter or function');
+    }
+    if($_SERVER['REQUEST_METHOD'] !== $method){
+        return;
+    }
+    $matches = null;
+    if (!preg_match('/^\/' . $route . '/', $_SERVER['REQUEST_URI'], $matches)) {
+        return;
+    }
+    if(gettype($callback) === "string") {
+        list($basecontroller, $action) = explode("@", $callback);
+        if (class_exists($basecontroller)) {
+            $controller = new $basecontroller();
+            header('Content-type: app/json');
+            echo $basecontroller->$action();
+            exit;
+        }
+    } else {
+            echo $callback($matches);
+            exit;
+        }
+    }
+    //Respond to user creation
+    respond('POST', 'users', 'ClientController@createUser');
+    respond('GET', 'users', 'ClientController@getID');
+    //Respond to messaging
+    respond('POST', 'messages', 'MessageController@newMessage');
+    respond('GET', 'messages', 'MessageController@getMessages');
 
-__construct();
-
-if(!$_POST['content'] || !$_POST['sender'] || !$_POST['recipient']){
-    exit("All fields are required.");
-}
-if($_POST){
-    //TODO: Handle user messages1`
-}
-?>
-<!doctype HTML>
-<html lang="en">
-<head>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>PHP Chat</title>
-    <link href="style.css" rel="stylesheet">
-</head>
-<body>
-<div id="user-sidebar">
-    <!---->
-</div>
-<div id="message-entry">
-    <form action="ClientController.php" method="POST">
-        <input type="text" name="sender" placeholder="Enter your username"/>
-        <input type="text" name="recipient"/>
-        <textarea name="content" placeholder="Enter your message"></textarea>
-        <button type="submit">Send</button>
-    </form>
-</div>
-<script src="./script.js"></script>
-</body>
-</html>
+    respond('GET', '[a-z_]*\.(css|js)$', function ($matches) {
+        // $matches = array(0 => '/filename.extension', 1 => 'extension')
+        if (file_exists(__DIR__ . '/client' . $matches[0])) {
+            $type = $matches[1] === 'css' ? 'css' : 'javascript';
+            header('Content-type: text/' . $type);
+            readfile(__DIR__ . '/client' . $matches[0]);
+        }
+    });
+    // If all else fails, send the user to index.html
+    respond('GET', '', function() {
+        readfile(__DIR__ . '/client/index.html');
+});
